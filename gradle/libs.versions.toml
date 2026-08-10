@@ -1,6 +1,10 @@
 [versions]
 lavalink-api = "4.0.6"
 lavalink-server = "4.0.6"
+subsonicKotlin = "1.0.0-beta07"
+
+[libraries]
+subsonicClient = { module = "dev.zt64.subsonic:subsonic-client", version.ref = "subsonicKotlin" }
 
 [plugins]
 lavalink = { id = "dev.arbjerg.lavalink.gradle-plugin", version = "1.0.15" }

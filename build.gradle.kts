@@ -25,5 +25,5 @@ tasks {
 }
 
 dependencies {
-    // add your dependencies here
+    implementation(libs.subsonicClient)
 }
