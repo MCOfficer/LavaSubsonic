@@ -3,11 +3,11 @@ plugins {
     alias(libs.plugins.lavalink)
 }
 
-group = "com.example"
+group = "me.mcofficer"
 version = "0.1.0"
 
 lavalinkPlugin {
-    name = "plugin-template"
+    name = "lava-subsonic"
     apiVersion = libs.versions.lavalink.api
     serverVersion = libs.versions.lavalink.server
 }

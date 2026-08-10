@@ -1,4 +1,4 @@
-package com.example.plugin;
+package me.mcofficer.plugin;
 
 import dev.arbjerg.lavalink.api.ISocketContext;
 import dev.arbjerg.lavalink.api.PluginEventHandler;
@@ -8,11 +8,11 @@ import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 @Service
-public class ExamplePlugin extends PluginEventHandler {
+public class LavaSubsonicPlugin extends PluginEventHandler {
 
-    private static final Logger log = LoggerFactory.getLogger(ExamplePlugin.class);
+    private static final Logger log = LoggerFactory.getLogger(LavaSubsonicPlugin.class);
 
-    public ExamplePlugin() {
+    public LavaSubsonicPlugin() {
         log.info("Hello, world!");
     }
 
