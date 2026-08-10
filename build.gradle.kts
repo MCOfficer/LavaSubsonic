@@ -26,4 +26,6 @@ tasks {
 
 dependencies {
     implementation(libs.subsonicClient)
+    implementation(libs.ktorClient)
+    implementation(libs.ktorEngine)
 }
