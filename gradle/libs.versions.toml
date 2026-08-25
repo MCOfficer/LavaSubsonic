@@ -1,13 +1,24 @@
 [versions]
 lavalink-api = "4.2.2"
 lavalink-server = "4.2.2"
+lavalink-plugin = "1.1.2"
 ktor = "3.5.2"
 subsonicKotlin = "1.0.0-beta07"
+kotlinCoroutines = "1.7.0"
+kotlin = "2.3.21"
+shadow = "9.6.1"
 
 [libraries]
 subsonicClient = { module = "dev.zt64.subsonic:subsonic-client", version.ref = "subsonicKotlin" }
+
 ktorClient = { module = "io.ktor:ktor-client-core", version.ref = "ktor" }
 ktorEngine = { module = "io.ktor:ktor-client-java", version.ref = "ktor" }
+ktorSerialization = { module = "io.ktor:ktor-serialization-kotlinx-json", version.ref = "ktor" }
+kotlinCoroutines = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-core", version.ref = "kotlinCoroutines" }
 
 [plugins]
-lavalink = { id = "dev.arbjerg.lavalink.gradle-plugin", version = "1.1.2" }
+lavalink = { id = "dev.arbjerg.lavalink.gradle-plugin", version.ref = "lavalink-plugin" }
+kotlinSerialization = { id = "org.jetbrains.kotlin.plugin.serialization", version.ref = "kotlin" }
+kotlinSpring = { id = "org.jetbrains.kotlin.plugin.spring", version.ref = "kotlin" }
+kotlinJvm = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin" }
+shadow = { id = "com.gradleup.shadow", version.ref = "shadow" }
