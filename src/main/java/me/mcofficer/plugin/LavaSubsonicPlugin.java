@@ -34,10 +34,10 @@ public class LavaSubsonicPlugin implements AudioPlayerManagerConfiguration, Auto
             LOG.error("Subsonic configuration failed, requires an API-Key or Username & Password");
             return;
         } else {
-            auth = new SubsonicAuth.Token(config.getUsername(), "TODOsalt123", config.getPassword());
+            auth = SubsonicAuth.Token.Companion.invoke(config.getUsername(), config.getPassword());
         }
 
-        JavaHttpEngine engine = new JavaHttpEngine(new JavaHttpConfig());
+        var engine = new JavaHttpEngine(new JavaHttpConfig());
         Function1<HttpClientConfig<?>, Unit> clientConfiguration = (clientConfig) -> {
             // Place to configure the engine, f.e.
             // clientConfig.setFollowRedirects(true);
@@ -53,9 +53,10 @@ public class LavaSubsonicPlugin implements AudioPlayerManagerConfiguration, Auto
 
     @NotNull
     @Override
-    public AudioPlayerManager configure(@NotNull AudioPlayerManager audioPlayerManager) {
-        audioPlayerManager.registerSourceManager(new SubsonicAudioSourceManager());
-        return audioPlayerManager;
+    public AudioPlayerManager configure(@NotNull AudioPlayerManager manager) {
+        var sourceManager = new SubsonicAudioSourceManager(this.client);
+        manager.registerSourceManager(sourceManager);
+        return manager;
     }
 
     @Override
