@@ -1,94 +1,109 @@
-package me.mcofficer.plugin;
+package me.mcofficer.plugin
 
-import com.sedmelluq.discord.lavaplayer.player.AudioPlayerManager;
-import com.sedmelluq.discord.lavaplayer.source.AudioSourceManager;
-import com.sedmelluq.discord.lavaplayer.track.AudioItem;
-import com.sedmelluq.discord.lavaplayer.track.AudioReference;
-import com.sedmelluq.discord.lavaplayer.track.AudioTrack;
-import com.sedmelluq.discord.lavaplayer.track.AudioTrackInfo;
-import dev.zt64.subsonic.api.model.Song;
-import dev.zt64.subsonic.client.SubsonicClient;
-import kotlinx.coroutines.BuildersKt;
-import kotlinx.coroutines.Dispatchers;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.springframework.util.MimeType;
+import com.sedmelluq.discord.lavaplayer.player.AudioPlayerManager
+import com.sedmelluq.discord.lavaplayer.source.http.HttpAudioSourceManager
+import com.sedmelluq.discord.lavaplayer.source.http.HttpAudioTrack
+import com.sedmelluq.discord.lavaplayer.tools.Units.DURATION_MS_UNKNOWN
+import com.sedmelluq.discord.lavaplayer.track.AudioItem
+import com.sedmelluq.discord.lavaplayer.track.AudioReference
+import com.sedmelluq.discord.lavaplayer.track.AudioTrack
+import com.sedmelluq.discord.lavaplayer.track.AudioTrackInfo
+import dev.zt64.subsonic.api.model.Song
+import dev.zt64.subsonic.client.SubsonicClient
+import kotlinx.coroutines.runBlocking
+import org.slf4j.Logger
+import org.slf4j.LoggerFactory
+import java.io.DataInput
+import java.io.DataOutput
 
-import java.io.DataInput;
-import java.io.DataOutput;
-import java.io.IOException;
+class SubsonicAudioSourceManager(@JvmField var client: SubsonicClient) : HttpAudioSourceManager() {
+    companion object {
+        private val LOG: Logger? = LoggerFactory.getLogger(SubsonicAudioSourceManager::class.java)
 
-public class SubsonicAudioSourceManager implements AudioSourceManager {
-
-    private static final Logger LOG = LoggerFactory.getLogger(SubsonicAudioSourceManager.class);
-
-    public static final String SEARCH_PREFIX = "subsearch:"; // TODO - allow to configure? support multiple servers?
-    public static final String SUBSONIC_PREFIX = "subsonic:"; // TODO - allow to configure? support multiple servers?
-
-    SubsonicClient client;
-
-    public SubsonicAudioSourceManager(SubsonicClient client) {
-        this.client = client;
+        const val SEARCH_PREFIX: String = "subsearch:" // TODO - allow to configure? support multiple servers?
+        const val SUBSONIC_PREFIX: String = "subsonic:" // TODO - allow to configure? support multiple servers?
     }
 
-    public SubsonicClient getClient() {
-        return client;
+    override fun getSourceName(): String? {
+        return LavaSubsonicPlugin.SOURCE_NAME
     }
 
-    @Override
-    public String getSourceName() {
-        return LavaSubsonicPlugin.SOURCE_NAME;
-    }
-
-    @Override
-    public AudioItem loadItem(AudioPlayerManager manager, AudioReference reference) {
-        String requestedId;
+    override fun loadItem(manager: AudioPlayerManager?, reference: AudioReference): AudioItem? {
+        val requestedId: String?
         if (reference.identifier.startsWith(SEARCH_PREFIX)) {
-            return getSearchResult(reference.identifier.substring(SEARCH_PREFIX.length()));
-        } else if (!reference.identifier.startsWith("subsonic:")) {
-            return null;
+            return getSearchResult(reference.identifier.substring(SEARCH_PREFIX.length))
+        } else if (!reference.identifier.startsWith(SUBSONIC_PREFIX)) {
+            return null
         } else {
-            requestedId = reference.identifier.substring(SEARCH_PREFIX.length() - 1);
+            requestedId = reference.identifier.substring(SUBSONIC_PREFIX.length)
         }
 
-        Song song;
+        val song: Song
         try {
-            song = BuildersKt.runBlocking(Dispatchers.getIO(),
-                    (scope, continuation) -> KotlinWrapperKt.getSong(client, requestedId, continuation));
+            song = runBlocking {
+                client.getSong(requestedId)
+            }
 
-        } catch (InterruptedException e) {
-            throw new RuntimeException(e);
+        } catch (e: InterruptedException) {
+            throw RuntimeException(e)
         }
 
-        var info = KotlinWrapperKt.extractSongInfo(song);
-        var mimeType = MimeType.valueOf(song.getMimeType());
-        var track = new SubsonicAudioTrack(info, this, mimeType);
+        val info = AudioTrackInfo(
+            song.title,
+            song.displayArtist ?: song.artistName,
+            song.duration?.inWholeMilliseconds ?: DURATION_MS_UNKNOWN,
+            song.id, // TODO: use song: prefixes internally to distinguish from albums etc?
+            false,
+            null, // Would love to use the ID here, but some bots rely on uri being a valid URL
+            getCoverArtUrl(song),
+            song.isrc.firstOrNull()
+        );
 
-        return track;
+        // NOTE: The stream URL contains the password / API key, so it must not be part of the public track info
+        val streamUrl = client.getStreamUrl(song.id, 0, null, null, true);
+        val httpReference = AudioReference(streamUrl, song.title)
+        val httpTrack = super.loadItem(manager, httpReference) as HttpAudioTrack
+
+        val track = SubsonicAudioTrack(info, this, httpTrack)
+
+        return track
     }
 
-    public AudioItem getSearchResult(String identifier) {
-        return null;
+    fun getCoverArtUrl(song: Song): String? {
+        if (song.musicBrainzId != null) {
+            return "https://coverartarchive.org/release/${song.musicBrainzId}/front"
+        }
+        return null
     }
 
-    @Override
-    public boolean isTrackEncodable(AudioTrack track) {
-        return true;
-    }
-
-    @Override
-    public void encodeTrack(AudioTrack track, DataOutput output) throws IOException {
-        ((SubsonicAudioTrack) track).encodeTrack(output);
-    }
-
-    @Override
-    public AudioTrack decodeTrack(AudioTrackInfo trackInfo, DataInput input) throws IOException {
-        return SubsonicAudioTrack.decodeTrack(trackInfo, this, input);
+    fun getSearchResult(identifier: String?): AudioItem? {
+        return null
     }
 
 
-    @Override
-    public void shutdown() {
-        this.client.close();
+    override fun encodeTrack(track: AudioTrack, output: DataOutput?) {
+        encodeTrackFactory((track as SubsonicAudioTrack).containerTrackFactory, output)
+    }
+
+    override fun decodeTrack(trackInfo: AudioTrackInfo?, input: DataInput?): AudioTrack? {
+        if (trackInfo == null) return null
+
+        val streamUrl = client.getStreamUrl(trackInfo.identifier, 0, null, null, true)
+        val internalTrackInfo = AudioTrackInfo(
+            trackInfo.title,
+            trackInfo.author,
+            trackInfo.length,
+            streamUrl,
+            trackInfo.isStream,
+            trackInfo.uri
+        );
+        val internalTrack = super.decodeTrack(internalTrackInfo, input) as? HttpAudioTrack? ?: return null
+
+        return SubsonicAudioTrack(trackInfo, this, internalTrack)
+    }
+
+    override fun shutdown() {
+        this.client.close()
+        super.shutdown()
     }
 }
