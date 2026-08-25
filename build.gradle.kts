@@ -41,6 +41,8 @@ tasks {
 
         // Exclude Lavalink's classes to avoid duplication
         exclude("org/jetbrains/annotations/**")
+
+        mergeServiceFiles()
     }
 
     named("installPlugin") {

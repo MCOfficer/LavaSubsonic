@@ -16,12 +16,13 @@ import org.slf4j.LoggerFactory
 import java.io.DataInput
 import java.io.DataOutput
 
-class SubsonicAudioSourceManager(@JvmField var client: SubsonicClient) : HttpAudioSourceManager() {
+class SubsonicAudioSourceManager(var serverConfig: Config.SubsonicServer, var client: SubsonicClient) :
+    HttpAudioSourceManager() {
     companion object {
         private val LOG: Logger? = LoggerFactory.getLogger(SubsonicAudioSourceManager::class.java)
 
-        const val SEARCH_PREFIX: String = "subsearch:" // TODO - allow to configure? support multiple servers?
-        const val SUBSONIC_PREFIX: String = "subsonic:" // TODO - allow to configure? support multiple servers?
+        const val SEARCH_PREFIX: String = "subsearch:" // TODO - allow to configure
+        const val SUBSONIC_PREFIX: String = "subsonic:" // TODO - allow to configure?
     }
 
     override fun getSourceName(): String? {
@@ -48,7 +49,7 @@ class SubsonicAudioSourceManager(@JvmField var client: SubsonicClient) : HttpAud
             throw RuntimeException(e)
         }
 
-        val info = AudioTrackInfo(
+        val trackInfo = AudioTrackInfo(
             song.title,
             song.displayArtist ?: song.artistName,
             song.duration?.inWholeMilliseconds ?: DURATION_MS_UNKNOWN,
@@ -60,11 +61,11 @@ class SubsonicAudioSourceManager(@JvmField var client: SubsonicClient) : HttpAud
         );
 
         // NOTE: The stream URL contains the password / API key, so it must not be part of the public track info
-        val streamUrl = client.getStreamUrl(song.id, 0, null, null, true);
+        var streamUrl = getStreamUrl(trackInfo)
         val httpReference = AudioReference(streamUrl, song.title)
         val httpTrack = super.loadItem(manager, httpReference) as HttpAudioTrack
 
-        val track = SubsonicAudioTrack(info, this, httpTrack)
+        val track = SubsonicAudioTrack(trackInfo, this, httpTrack)
 
         return track
     }
@@ -88,18 +89,23 @@ class SubsonicAudioSourceManager(@JvmField var client: SubsonicClient) : HttpAud
     override fun decodeTrack(trackInfo: AudioTrackInfo?, input: DataInput?): AudioTrack? {
         if (trackInfo == null) return null
 
-        val streamUrl = client.getStreamUrl(trackInfo.identifier, 0, null, null, true)
+        val streamUrl = getStreamUrl(trackInfo)
         val internalTrackInfo = AudioTrackInfo(
-            trackInfo.title,
-            trackInfo.author,
-            trackInfo.length,
-            streamUrl,
-            trackInfo.isStream,
-            trackInfo.uri
+            trackInfo.title, trackInfo.author, trackInfo.length, streamUrl, trackInfo.isStream, trackInfo.uri
         );
         val internalTrack = super.decodeTrack(internalTrackInfo, input) as? HttpAudioTrack? ?: return null
 
         return SubsonicAudioTrack(trackInfo, this, internalTrack)
+    }
+
+    private fun getStreamUrl(trackInfo: AudioTrackInfo): String {
+        return client.getStreamUrl(
+            trackInfo.identifier,
+            serverConfig.maxBitRate,
+            serverConfig.transcodeFormat,
+            null,
+            true
+        )
     }
 
     override fun shutdown() {

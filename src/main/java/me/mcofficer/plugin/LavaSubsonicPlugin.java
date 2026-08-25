@@ -10,31 +10,49 @@ import io.ktor.client.engine.java.JavaHttpEngine;
 import kotlin.Unit;
 import kotlin.jvm.functions.Function1;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 
 @Service
-public class LavaSubsonicPlugin implements AudioPlayerManagerConfiguration, AutoCloseable {
+public class LavaSubsonicPlugin implements AudioPlayerManagerConfiguration {
 
     private static final Logger LOG = LoggerFactory.getLogger(LavaSubsonicPlugin.class);
 
     static String USER_AGENT = "subsonic-kotlin (github.com/zt64/subsonic-kotlin)";
     static String SOURCE_NAME = "subsonic-kotlin";
 
-    private SubsonicClient client;
+    private final Config config;
 
     public LavaSubsonicPlugin(Config config) {
-        SubsonicAuth auth = null;
+        this.config = config;
+    }
 
-        if (config.apiKey != null) {
-            auth = new SubsonicAuth.Key(config.apiKey);
-        } else if (config.getUsername() == null || config.getPassword() == null) {
+
+    @NotNull
+    @Override
+    public AudioPlayerManager configure(@NotNull AudioPlayerManager manager) {
+
+        for (var server : config.getServers()) {
+            var sourceManager = createSourceManager(server);
+            if (sourceManager == null) continue;
+            manager.registerSourceManager(sourceManager);
+        }
+
+        return manager;
+    }
+
+    private static @Nullable SubsonicAudioSourceManager createSourceManager(Config.SubsonicServer server) {
+        SubsonicAuth auth;
+        if (server.getApiKey() != null) {
+            auth = new SubsonicAuth.Key(server.getApiKey());
+        } else if (server.getUsername() == null || server.getPassword() == null) {
             LOG.error("Subsonic configuration failed, requires an API-Key or Username & Password");
-            return;
+            return null;
         } else {
-            auth = SubsonicAuth.Token.Companion.invoke(config.getUsername(), config.getPassword());
+            auth = SubsonicAuth.Token.Companion.invoke(server.getUsername(), server.getPassword());
         }
 
         var engine = new JavaHttpEngine(new JavaHttpConfig());
@@ -44,23 +62,11 @@ public class LavaSubsonicPlugin implements AudioPlayerManagerConfiguration, Auto
             return Unit.INSTANCE;
         };
 
-        client = SubsonicClient.Companion.invoke(config.getBaseUrl(), auth, SOURCE_NAME, USER_AGENT, engine,
+        var client = SubsonicClient.Companion.invoke(server.getBaseUrl(), auth, SOURCE_NAME, USER_AGENT, engine,
                 clientConfiguration);
 
-        LOG.info("Subsonic plugin configured successfully");
+        LOG.info("Subsonic server '{}' configured successfully", server.getName());
+        return new SubsonicAudioSourceManager(server, client);
     }
 
-
-    @NotNull
-    @Override
-    public AudioPlayerManager configure(@NotNull AudioPlayerManager manager) {
-        var sourceManager = new SubsonicAudioSourceManager(this.client);
-        manager.registerSourceManager(sourceManager);
-        return manager;
-    }
-
-    @Override
-    public void close() throws Exception {
-        this.client.close();
-    }
 }
