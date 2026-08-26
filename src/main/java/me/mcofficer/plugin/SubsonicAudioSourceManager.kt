@@ -76,7 +76,9 @@ class SubsonicAudioSourceManager(var serverConfig: Config.SubsonicServer, var cl
     }
 
     suspend fun loadPlaylist(identifier: String, manager: AudioPlayerManager?): AudioItem? {
-        TODO()
+        val playlist = client.getPlaylist(identifier)
+        val tracks = playlist.songs.map { song -> createTrack(song, manager) }.toList()
+        return BasicAudioPlaylist(playlist.name, tracks, tracks.firstOrNull(), false)
     }
 
     suspend fun loadSearchResults(identifier: String, manager: AudioPlayerManager?): AudioItem {
