@@ -5,6 +5,7 @@ import com.sedmelluq.discord.lavaplayer.source.http.HttpAudioSourceManager
 import com.sedmelluq.discord.lavaplayer.source.http.HttpAudioTrack
 import com.sedmelluq.discord.lavaplayer.tools.Units.DURATION_MS_UNKNOWN
 import com.sedmelluq.discord.lavaplayer.track.*
+import dev.zt64.subsonic.api.model.AlbumInfo
 import dev.zt64.subsonic.api.model.Song
 import dev.zt64.subsonic.client.SubsonicClient
 import kotlinx.coroutines.runBlocking
@@ -63,8 +64,11 @@ class SubsonicAudioSourceManager(var serverConfig: Config.SubsonicServer, var cl
         return createTrack(client.getSong(identifier), manager)
     }
 
-    suspend fun loadAlbum(identifier: String, manager: AudioPlayerManager?): AudioItem? {
-        TODO()
+    suspend fun loadAlbum(identifier: String, manager: AudioPlayerManager?): AudioItem {
+        val album = client.getAlbum(identifier)
+        val albumInfo = client.getAlbumInfo(identifier)
+        val tracks = album.songs.map { song -> createTrack(song, manager, albumInfo) }.toList()
+        return BasicAudioPlaylist(album.name, tracks, tracks.firstOrNull(), false)
     }
 
     suspend fun loadArtist(identifier: String, manager: AudioPlayerManager?): AudioItem? {
@@ -83,7 +87,7 @@ class SubsonicAudioSourceManager(var serverConfig: Config.SubsonicServer, var cl
 
 
     private fun createTrack(
-        song: Song, manager: AudioPlayerManager?
+        song: Song, manager: AudioPlayerManager?, albumInfo: AlbumInfo? = null
     ): SubsonicAudioTrack {
         val trackInfo = AudioTrackInfo(
             song.title,
@@ -92,7 +96,7 @@ class SubsonicAudioSourceManager(var serverConfig: Config.SubsonicServer, var cl
             song.id, // TODO: use song: prefixes internally to distinguish from albums etc?
             false,
             null, // Would love to use the ID here, but some bots rely on uri being a valid URL
-            runBlocking { fetchArtworkUrl(song) },
+            runBlocking { fetchArtworkUrl(song, albumInfo) },
             song.isrc.firstOrNull()
         )
 
@@ -105,12 +109,13 @@ class SubsonicAudioSourceManager(var serverConfig: Config.SubsonicServer, var cl
         return track
     }
 
-    suspend fun fetchArtworkUrl(song: Song): String? {
-        if (serverConfig.fetchArtworkUri && song.albumId != null) {
-            val info = client.getAlbumInfo(song.albumId!!)
-            return info.largeImageUrl
-        }
-        return null
+    suspend fun fetchArtworkUrl(song: Song, albumInfo: AlbumInfo?): String? {
+        var albumInfo = albumInfo
+
+        if (albumInfo != null && serverConfig.fetchArtworkUri)
+            albumInfo = song.albumId?.let { client.getAlbumInfo(it) }
+
+        return albumInfo?.largeImageUrl
     }
 
     override fun encodeTrack(track: AudioTrack, output: DataOutput?) {
