@@ -61,7 +61,7 @@ class SubsonicAudioSourceManager(var serverConfig: Config.SubsonicServer, var cl
             song.id, // TODO: use song: prefixes internally to distinguish from albums etc?
             false,
             null, // Would love to use the ID here, but some bots rely on uri being a valid URL
-            getCoverArtUrl(song),
+            runBlocking { fetchArtworkUrl(song) },
             song.isrc.firstOrNull()
         )
 
@@ -71,13 +71,13 @@ class SubsonicAudioSourceManager(var serverConfig: Config.SubsonicServer, var cl
         val httpTrack = super.loadItem(manager, httpReference) as HttpAudioTrack
 
         val track = SubsonicAudioTrack(trackInfo, this, httpTrack)
-
         return track
     }
 
-    fun getCoverArtUrl(song: Song): String? {
-        if (song.musicBrainzId != null) {
-            return "https://coverartarchive.org/release/${song.musicBrainzId}/front"
+    suspend fun fetchArtworkUrl(song: Song): String? {
+        if (serverConfig.fetchArtworkUri && song.albumId != null) {
+            val info = client.getAlbumInfo(song.albumId!!)
+            return info.largeImageUrl
         }
         return null
     }

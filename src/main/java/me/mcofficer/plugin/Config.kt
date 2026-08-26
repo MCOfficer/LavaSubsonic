@@ -30,8 +30,7 @@ class Config {
         /// default is 0, which means no restriction.
         var maxBitRate: Int = 0
 
-        /// List of music Folders to limit the search to.
-        /// This will not limit access via IDs! Restrict your subsonic user's access instead
-        var musicFolderIds: List<String> = emptyList()
+        /// Make an extra API call for each track to fetch the artwork uri. Disable if you don't need it.
+        var fetchArtworkUri: Boolean = true
     }
 }
