@@ -32,7 +32,7 @@ class SubsonicAudioSourceManager : HttpAudioSourceManager {
     }
 
     override fun getSourceName(): String {
-        return LavaSubsonicPlugin.SOURCE_NAME
+        return serverConfig.name.toString()
     }
 
     fun matchIdentifier(identifier: String, prefix: String, pattern: Regex?): String? {

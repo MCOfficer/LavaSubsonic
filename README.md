@@ -10,7 +10,7 @@ Add the following to your `application.yaml`:
 lavalink:
   plugins:
     # Replace VERSION with the latest version or short commit hash
-    - dependency: com.github.MCOfficer.LavaSubsonic:lava-subsonic:VERSION
+    - dependency: com.github.MCOfficer:LavaSubsonic:VERSION
       repository: https://jitpack.io
 ```
 
@@ -24,7 +24,7 @@ plugins:
     servers:
 
       # A Subsonic server. You can define multiple servers and configure them separately.
-      - name: MyServer
+      - name: MyServer # used as `sourceName` in returned tracks
 
         # The server base URL, not including `/rest`
         baseUrl: https://my-subsonic.domain.net
