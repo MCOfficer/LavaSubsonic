@@ -27,12 +27,12 @@ tasks {
         options.encoding = "UTF-8"
     }
 
-    jar {
-        enabled = false
-    }
-
     shadowJar {
+        // Override regular jar with this one, so other tasks pick up the relocated one
         archiveClassifier.set("")
+        mustRunAfter(jar)
+
+        exclude("META-INF/*")
 
         // Relocate subsonic-kotlin and its deps so they don't conflict
         relocate("dev.zt64.subsonic", "me.mcofficer.lavasubsonic.subsonic_shaded")
