@@ -149,7 +149,7 @@ class SubsonicAudioSourceManager : HttpAudioSourceManager {
     suspend fun fetchArtworkUrl(song: Song, albumInfo: AlbumInfo?): String? {
         var albumInfo = albumInfo
 
-        if (albumInfo != null && serverConfig.fetchArtworkUri) albumInfo = song.albumId?.let { client.getAlbumInfo(it) }
+        if (albumInfo == null && serverConfig.fetchArtworkUri) albumInfo = song.albumId?.let { client.getAlbumInfo(it) }
 
         return albumInfo?.largeImageUrl
     }
