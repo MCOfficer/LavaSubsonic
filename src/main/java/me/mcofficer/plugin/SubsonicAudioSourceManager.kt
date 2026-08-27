@@ -6,7 +6,9 @@ import com.sedmelluq.discord.lavaplayer.source.http.HttpAudioTrack
 import com.sedmelluq.discord.lavaplayer.tools.Units.DURATION_MS_UNKNOWN
 import com.sedmelluq.discord.lavaplayer.track.*
 import dev.zt64.subsonic.api.model.AlbumInfo
+import dev.zt64.subsonic.api.model.Artist
 import dev.zt64.subsonic.api.model.Song
+import dev.zt64.subsonic.api.model.SubsonicExtension
 import dev.zt64.subsonic.client.SubsonicClient
 import kotlinx.coroutines.runBlocking
 import org.slf4j.Logger
@@ -14,8 +16,17 @@ import org.slf4j.LoggerFactory
 import java.io.DataInput
 import java.io.DataOutput
 
-class SubsonicAudioSourceManager(var serverConfig: Config.SubsonicServer, var client: SubsonicClient) :
-    HttpAudioSourceManager() {
+class SubsonicAudioSourceManager : HttpAudioSourceManager {
+    var serverConfig: Config.SubsonicServer
+    var client: SubsonicClient
+    var subsonicExtensions: List<SubsonicExtension>
+
+    constructor(serverConfig: Config.SubsonicServer, client: SubsonicClient) : super() {
+        this.serverConfig = serverConfig
+        this.client = client
+        this.subsonicExtensions = runBlocking { client.getOpenSubsonicExtensions() }
+    }
+
     companion object {
         private val LOG: Logger = LoggerFactory.getLogger(SubsonicAudioSourceManager::class.java)
     }
@@ -71,11 +82,24 @@ class SubsonicAudioSourceManager(var serverConfig: Config.SubsonicServer, var cl
         return BasicAudioPlaylist(album.name, tracks, tracks.firstOrNull(), false)
     }
 
-    suspend fun loadArtist(identifier: String, manager: AudioPlayerManager?): AudioItem? {
-        TODO()
+    suspend fun loadArtist(identifier: String, manager: AudioPlayerManager?): AudioItem {
+        val queryById = subsonicExtensions.any { it.name.equals("topSongsByArtistId", true) }
+
+        var artist: Artist? = null
+        val topSongs = if (queryById) {
+            client.getTopSongs(identifier)
+        } else {
+            artist = client.getArtist(identifier)
+            client.getTopSongs(artist)
+        }
+
+        val tracks = topSongs.map { song -> createTrack(song, manager) }.toList()
+        val artistName = artist?.name ?: identifier
+
+        return BasicAudioPlaylist("Top songs for $artistName", tracks, tracks.firstOrNull(), false)
     }
 
-    suspend fun loadPlaylist(identifier: String, manager: AudioPlayerManager?): AudioItem? {
+    suspend fun loadPlaylist(identifier: String, manager: AudioPlayerManager?): AudioItem {
         val playlist = client.getPlaylist(identifier)
         val tracks = playlist.songs.map { song -> createTrack(song, manager) }.toList()
         return BasicAudioPlaylist(playlist.name, tracks, tracks.firstOrNull(), false)
@@ -103,7 +127,7 @@ class SubsonicAudioSourceManager(var serverConfig: Config.SubsonicServer, var cl
         )
 
         // NOTE: The stream URL contains the password / API key, so it must not be part of the public track info
-        var streamUrl = getStreamUrl(trackInfo)
+        val streamUrl = getStreamUrl(trackInfo)
         val httpReference = AudioReference(streamUrl, song.title)
         val httpTrack = super.loadItem(manager, httpReference) as HttpAudioTrack
 
@@ -114,8 +138,7 @@ class SubsonicAudioSourceManager(var serverConfig: Config.SubsonicServer, var cl
     suspend fun fetchArtworkUrl(song: Song, albumInfo: AlbumInfo?): String? {
         var albumInfo = albumInfo
 
-        if (albumInfo != null && serverConfig.fetchArtworkUri)
-            albumInfo = song.albumId?.let { client.getAlbumInfo(it) }
+        if (albumInfo != null && serverConfig.fetchArtworkUri) albumInfo = song.albumId?.let { client.getAlbumInfo(it) }
 
         return albumInfo?.largeImageUrl
     }
