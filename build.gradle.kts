@@ -19,6 +19,7 @@ lavalinkPlugin {
 java {
     toolchain {
         languageVersion = JavaLanguageVersion.of(17)
+        sourceCompatibility = JavaVersion.VERSION_17
     }
 }
 
