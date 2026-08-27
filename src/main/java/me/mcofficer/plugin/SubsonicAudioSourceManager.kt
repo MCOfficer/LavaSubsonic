@@ -31,18 +31,23 @@ class SubsonicAudioSourceManager : HttpAudioSourceManager {
         private val LOG: Logger = LoggerFactory.getLogger(SubsonicAudioSourceManager::class.java)
     }
 
-    override fun getSourceName(): String? {
+    override fun getSourceName(): String {
         return LavaSubsonicPlugin.SOURCE_NAME
     }
 
     fun matchIdentifier(identifier: String, prefix: String, pattern: Regex?): String? {
-        if (pattern != null) {
+        LOG.debug("Matching '{}' with prefix '{}' or pattern '{}'", identifier, prefix, pattern)
+        val match = if (pattern != null) {
             val match = pattern.matchEntire(identifier)
-            return match?.groups?.get(1)?.value
+            match?.groups?.get(1)?.value
         } else if (identifier.startsWith(prefix)) {
-            return identifier.substring(prefix.length)
+            identifier.substring(prefix.length)
+        } else {
+            null
         }
-        return null
+
+        LOG.debug("Matched '{}' from string '{}'", match, identifier)
+        return match
     }
 
     override fun loadItem(manager: AudioPlayerManager?, reference: AudioReference): AudioItem? {
@@ -72,10 +77,12 @@ class SubsonicAudioSourceManager : HttpAudioSourceManager {
     }
 
     suspend fun loadSong(identifier: String, manager: AudioPlayerManager?): AudioItem {
+        LOG.info("Loading song with identifier $identifier")
         return createTrack(client.getSong(identifier), manager)
     }
 
     suspend fun loadAlbum(identifier: String, manager: AudioPlayerManager?): AudioItem {
+        LOG.info("Loading album with identifier $identifier")
         val album = client.getAlbum(identifier)
         val albumInfo = client.getAlbumInfo(identifier)
         val tracks = album.songs.map { song -> createTrack(song, manager, albumInfo) }.toList()
@@ -84,6 +91,7 @@ class SubsonicAudioSourceManager : HttpAudioSourceManager {
 
     suspend fun loadArtist(identifier: String, manager: AudioPlayerManager?): AudioItem {
         val queryById = subsonicExtensions.any { it.name.equals("topSongsByArtistId", true) }
+        LOG.info("Loading artist with identifier $identifier (topSongsByArtistId supported: $queryById)")
 
         var artist: Artist? = null
         val topSongs = if (queryById) {
@@ -100,12 +108,14 @@ class SubsonicAudioSourceManager : HttpAudioSourceManager {
     }
 
     suspend fun loadPlaylist(identifier: String, manager: AudioPlayerManager?): AudioItem {
+        LOG.info("Loading playlist with identifier $identifier")
         val playlist = client.getPlaylist(identifier)
         val tracks = playlist.songs.map { song -> createTrack(song, manager) }.toList()
         return BasicAudioPlaylist(playlist.name, tracks, tracks.firstOrNull(), false)
     }
 
     suspend fun loadSearchResults(identifier: String, manager: AudioPlayerManager?): AudioItem {
+        LOG.info("Loading search result with query $identifier")
         val response = client.searchID3(identifier, 0, 0, 0, 0, 20, 0, null)
         val tracks = response.songs.map { song -> createTrack(song, manager) }.toList()
         return BasicAudioPlaylist("Search results for '${identifier}'", tracks, tracks.firstOrNull(), true)
@@ -115,6 +125,7 @@ class SubsonicAudioSourceManager : HttpAudioSourceManager {
     private fun createTrack(
         song: Song, manager: AudioPlayerManager?, albumInfo: AlbumInfo? = null
     ): SubsonicAudioTrack {
+        LOG.debug("Creating track with song '${song.title}' (${song.id})")
         val trackInfo = AudioTrackInfo(
             song.title,
             song.displayArtist ?: song.artistName,

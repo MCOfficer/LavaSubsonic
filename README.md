@@ -16,6 +16,8 @@ lavalink:
 
 ## Configuration
 
+Use the following in your `application.yaml`. Default values are only included for posterity, you can safely omit them.
+
 ```yaml
 plugins:
   subsonic:
@@ -34,7 +36,7 @@ plugins:
         password: a-strong-password
         apiKey: null # default
 
-        # passed to the stream endpoint, f.e. "mp3", "opus". See https://opensubsonic.netlify.app/docs/endpoints/stream/
+        # passed to the stream endpoint, f.e. "mp3" or "opus". See https://opensubsonic.netlify.app/docs/endpoints/stream/
         transcodeFormat: null # default, means unmodified streaming. Make sure all your audio formats are supported by lavalink!
 
         # passed to the stream endpoint, see https://opensubsonic.netlify.app/docs/endpoints/stream/
