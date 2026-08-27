@@ -1,15 +1,19 @@
 # LavaSubsonic
 
+[![](https://jitpack.io/v/MCOfficer/LavaSubsonic.svg)](https://jitpack.io/#MCOfficer/LavaSubsonic)
+[![](https://img.shields.io/github/v/release/MCOfficer/LavaSubsonic?style=flat&label=Github)](https://github.com/MCOfficer/LavaSubsonic/releases/latest)
+
 A LavaLink plugin to connect to Subsonic-compatible music servers.
 
 ## Installation
 
-Add the following to your `application.yaml`:
+Add the following to your `application.yaml`. Make sure to replace VERSION with the latest release.
+
+(you can also use builds from individual commits, see [Jitpack](https://jitpack.io/#MCOfficer/LavaSubsonic))
 
 ```yml
 lavalink:
   plugins:
-    # Replace VERSION with the latest version or short commit hash
     - dependency: com.github.MCOfficer:LavaSubsonic:VERSION
       repository: https://jitpack.io
 ```
