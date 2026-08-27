@@ -1,38 +1,29 @@
-package me.mcofficer.plugin;
+package me.mcofficer.plugin
 
-import com.sedmelluq.discord.lavaplayer.container.MediaContainerDescriptor;
-import com.sedmelluq.discord.lavaplayer.source.AudioSourceManager;
-import com.sedmelluq.discord.lavaplayer.source.http.HttpAudioTrack;
-import com.sedmelluq.discord.lavaplayer.track.*;
-import com.sedmelluq.discord.lavaplayer.track.playback.LocalAudioTrackExecutor;
+import com.sedmelluq.discord.lavaplayer.container.MediaContainerDescriptor
+import com.sedmelluq.discord.lavaplayer.source.AudioSourceManager
+import com.sedmelluq.discord.lavaplayer.source.http.HttpAudioTrack
+import com.sedmelluq.discord.lavaplayer.track.AudioTrackInfo
+import com.sedmelluq.discord.lavaplayer.track.DelegatedAudioTrack
+import com.sedmelluq.discord.lavaplayer.track.playback.LocalAudioTrackExecutor
 
-public class SubsonicAudioTrack extends DelegatedAudioTrack {
+class SubsonicAudioTrack
+/**
+ * @param trackInfo     Track info
+ * @param sourceManager Source manager used to load this track
+ */(
+    trackInfo: AudioTrackInfo?, var sourceManager: SubsonicAudioSourceManager?, var internalTrack: HttpAudioTrack
+) : DelegatedAudioTrack(trackInfo) {
 
-    SubsonicAudioSourceManager sourceManager;
-    HttpAudioTrack internalTrack;
+    val containerTrackFactory: MediaContainerDescriptor?
+        get() = internalTrack.containerTrackFactory
 
-    /**
-     * @param trackInfo     Track info
-     * @param sourceManager Source manager used to load this track
-     */
-    public SubsonicAudioTrack(AudioTrackInfo trackInfo, SubsonicAudioSourceManager sourceManager,
-                              HttpAudioTrack internalTrack) {
-        super(trackInfo);
-        this.internalTrack = internalTrack;
-        this.sourceManager = sourceManager;
+    override fun getSourceManager(): AudioSourceManager? {
+        return sourceManager
     }
 
-    @Override
-    public AudioSourceManager getSourceManager() {
-        return sourceManager;
-    }
-
-    @Override
-    public void process(LocalAudioTrackExecutor executor) throws Exception {
-        processDelegate(internalTrack, executor);
-    }
-
-    public MediaContainerDescriptor getContainerTrackFactory() {
-        return internalTrack.getContainerTrackFactory();
+    @Throws(Exception::class)
+    override fun process(executor: LocalAudioTrackExecutor?) {
+        processDelegate(internalTrack, executor)
     }
 }
